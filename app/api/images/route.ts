@@ -1,4 +1,4 @@
-import { put, list, del, get } from "@vercel/blob"
+import { put, list, del } from "@vercel/blob"
 import { createClient } from "@/lib/supabase/server"
 import { generateFileName, isOwner } from "@/lib/file"
 
@@ -6,6 +6,13 @@ async function getAuthUser() {
     const supabase = await createClient()
     const { data } = await supabase.auth.getUser()
     return data?.user ?? null
+}
+
+function formatImageUrl(blobUrl: string): string {
+    if (blobUrl.includes(".private.blob.")) {
+        return `/api/images/serve?url=${encodeURIComponent(blobUrl)}`
+    }
+    return blobUrl
 }
 
 export async function POST(request: Request) {
@@ -33,25 +40,27 @@ export async function POST(request: Request) {
             let blobResult
             try {
                 blobResult = await put(`${id}/${generateFileName()}`, image, { access: 'public' })
-            } catch (err: any) {
+            } catch (err: unknown) {
+                const errMsg = err instanceof Error ? err.message : String(err)
                 // If the store is configured with private access, fallback to private
-                if (err?.message?.includes("private store") || err?.message?.includes("private access")) {
+                if (errMsg.includes("private store") || errMsg.includes("private access")) {
                     blobResult = await put(`${id}/${generateFileName()}`, image, { access: 'private' })
                 } else {
                     throw err
                 }
             }
-            urls.push(blobResult.url)
+            urls.push(formatImageUrl(blobResult.url))
         }
 
         return Response.json({ imageUrls: urls })
-    } catch (error: any) {
+    } catch (error) {
         console.error("POST /api/images error:", error)
-        return Response.json({ error: error?.message || "Failed to upload images" }, { status: 500 })
+        const message = error instanceof Error ? error.message : "Failed to upload images"
+        return Response.json({ error: message }, { status: 500 })
     }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         const user = await getAuthUser()
         if (!user) {
@@ -60,34 +69,15 @@ export async function GET(request: Request) {
 
         const id = user.id
 
-        const { searchParams } = new URL(request.url)
-        const fileUrl = searchParams.get("url")
-
-        if (fileUrl) {
-            if (!isOwner(fileUrl, id)) {
-                return Response.json({ error: "Unauthorized to view this file" }, { status: 403 })
-            }
-
-            const blobResult = await get(fileUrl, { access: 'private' })
-            if (!blobResult) {
-                return Response.json({ error: "Image not found" }, { status: 404 })
-            }
-            return new Response(blobResult.stream, {
-                headers: {
-                    'content-type': blobResult.headers.get('content-type') || 'application/octet-stream',
-                    'cache-control': 'public, max-age=31536000, immutable'
-                }
-            })
-        }
-
         const blobs = (await list({ prefix: id })).blobs
         blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-        const imageUrls = blobs.map(blob => blob.url)
+        const imageUrls = blobs.map(blob => formatImageUrl(blob.url))
 
         return Response.json({ imageUrls })
-    } catch (error: any) {
+    } catch (error) {
         console.error("GET /api/images error:", error)
-        return Response.json({ error: error?.message || "Failed to fetch images" }, { status: 500 })
+        const message = error instanceof Error ? error.message : "Failed to fetch images"
+        return Response.json({ error: message }, { status: 500 })
     }
 }
 
@@ -99,19 +89,36 @@ export async function DELETE(request: Request) {
         }
 
         const id = user.id
-        const { url } = await request.json()
-        if (!url) {
+        const body = await request.json()
+        let targetUrl = body?.url
+
+        if (!targetUrl) {
             return Response.json({ error: "URL is required" }, { status: 400 })
         }
 
-        if (!isOwner(url, id)) {
+        // If the URL is wrapped in our proxy endpoint, extract the underlying blob URL
+        if (targetUrl.includes("/api/images/serve?url=")) {
+            try {
+                const parsed = new URL(targetUrl, "http://localhost")
+                const extracted = parsed.searchParams.get("url")
+                if (extracted) {
+                    targetUrl = extracted
+                }
+            } catch {
+                // keep targetUrl as is
+            }
+        }
+
+        // Verify the user owns this file
+        if (!isOwner(targetUrl, id)) {
             return Response.json({ error: "Unauthorized to delete this file" }, { status: 403 })
         }
 
-        await del(url)
+        await del(targetUrl)
         return Response.json({ success: true })
-    } catch (error: any) {
+    } catch (error) {
         console.error("DELETE /api/images error:", error)
-        return Response.json({ error: error?.message || "Failed to delete image" }, { status: 500 })
+        const message = error instanceof Error ? error.message : "Failed to delete image"
+        return Response.json({ error: message }, { status: 500 })
     }
 }

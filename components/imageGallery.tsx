@@ -142,6 +142,7 @@ export default function ImageGallery() {
                                     src={url}
                                     alt={`Gallery photo ${index + 1}`}
                                     fill
+                                    unoptimized={url.includes('/api/images/serve')}
                                     sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, (max-width: 1280px) 33vw, 25vw"
                                     style={{ objectFit: 'cover' }}
                                     priority={index < 4}
@@ -262,6 +263,7 @@ export default function ImageGallery() {
                                 src={selectedImage}
                                 alt="Expanded view"
                                 fill
+                                unoptimized={selectedImage.includes('/api/images/serve')}
                                 style={{ objectFit: 'contain' }}
                                 sizes="(max-width: 900px) 100vw, 850px"
                             />

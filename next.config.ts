@@ -5,10 +5,23 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
+    localPatterns: [
+      {
+        pathname: "/api/images/**",
+        search: "?**",
+      },
+      {
+        pathname: "/api/images/**",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "**.public.blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.private.blob.vercel-storage.com",
       },
       {
         protocol: "https",
