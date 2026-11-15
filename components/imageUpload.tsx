@@ -24,6 +24,20 @@ export default function ImageUpload() {
 
     const [images, setImages] = useState<File[]>([])
     const [isCompressing, setIsCompressing] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+
+    async function handleUpload() {
+        if (images.length === 0 || isUploading) return
+        setIsUploading(true)
+        try {
+            await uploadImages(images)
+            setImages([])
+        } catch (error) {
+            console.error("Upload error:", error)
+        } finally {
+            setIsUploading(false)
+        }
+    }
 
     async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const files = Array.from(e.target.files || [])
@@ -123,8 +137,9 @@ export default function ImageUpload() {
             <Button
                 fullWidth
                 variant="contained"
-                disabled={images.length === 0 || isCompressing}
-                onClick={() => { uploadImages(images) }}
+                disabled={images.length === 0 || isCompressing || isUploading}
+                onClick={handleUpload}
+                startIcon={isUploading ? <CircularProgress size={18} color="inherit" /> : <CloudUploadIcon />}
                 sx={{
                     py: 1.5,
                     borderRadius: 2,
@@ -132,7 +147,7 @@ export default function ImageUpload() {
                     fontWeight: 600
                 }}
             >
-                Upload {images.length > 0 ? `${images.length} Images` : "Images"}
+                {isUploading ? "Uploading..." : `Upload ${images.length > 0 ? `${images.length} Images` : "Images"}`}
             </Button>
         </Stack>
     )
