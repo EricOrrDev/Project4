@@ -28,6 +28,7 @@ export async function signIn({
 		return;
 	}
 
+	router.refresh();
 	router.push("/");
 }
 
@@ -52,6 +53,7 @@ export async function signUp({
 	}
 
 	if (data.session) {
+		router.refresh();
 		router.push("/");
 	} else {
 		setError("Check your email to confirm your account!");
@@ -73,5 +75,6 @@ export async function signOut({
 		return;
 	}
 
+	router.refresh();
 	router.push("/login");
 }
