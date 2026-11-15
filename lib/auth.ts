@@ -14,8 +14,15 @@ export async function signIn({
 	router,
 	setError,
 }: AuthParams) {
-	const supabase = createClient();
+	const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+	if (!rawUrl || rawUrl.includes("placeholder")) {
+		setError(
+			"NEXT_PUBLIC_SUPABASE_URL is missing or placeholder on Vercel. Please check Vercel Environment Variables and redeploy.",
+		);
+		return;
+	}
 
+	const supabase = createClient();
 	setError(undefined);
 
 	const { error } = await supabase.auth.signInWithPassword({
@@ -38,8 +45,15 @@ export async function signUp({
 	router,
 	setError,
 }: AuthParams) {
-	const supabase = createClient();
+	const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+	if (!rawUrl || rawUrl.includes("placeholder")) {
+		setError(
+			"NEXT_PUBLIC_SUPABASE_URL is missing or placeholder on Vercel. Please check Vercel Environment Variables and redeploy.",
+		);
+		return;
+	}
 
+	const supabase = createClient();
 	setError(undefined);
 
 	const { data, error } = await supabase.auth.signUp({

@@ -6,12 +6,16 @@ export async function updateSession(request: NextRequest) {
 		request,
 	});
 
-	const supabaseUrl =
-		process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-	const supabaseKey =
+	const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+	const rawKey =
 		process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
 		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-		"placeholder-key";
+		"";
+
+	const supabaseUrl =
+		rawUrl.replace(/^["']|["']$/g, "").trim() || "https://placeholder.supabase.co";
+	const supabaseKey =
+		rawKey.replace(/^["']|["']$/g, "").trim() || "placeholder-key";
 
 	const supabase = createServerClient(supabaseUrl, supabaseKey, {
 		cookies: {
@@ -38,7 +42,6 @@ export async function updateSession(request: NextRequest) {
 	const { data } = await supabase.auth.getClaims();
 	const user = data?.claims;
 
-	//this started simple enough but now it giving a real code smell
 	if (
 		!user &&
 		!request.nextUrl.pathname.startsWith("/login") &&
